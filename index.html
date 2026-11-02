@@ -85,7 +85,14 @@ $("src").onchange=run;$("tgt").onchange=run;
 $("clr").onclick=()=>{$("in").value="";run()};
 $("cp").onclick=()=>navigator.clipboard.writeText($("out").textContent);
 $("swap").onclick=()=>{const o=$("out").textContent;if(o){const a=src(),b=tgt();$("src").value=b;$("tgt").value=a;$("in").value=o;run()}};
-const say=(t,l)=>{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang=VOICE[l];speechSynthesis.speak(u)};
+const say=(t,l)=>{if(!t||!("speechSynthesis" in window)){$("err").textContent="此瀏覽器不支援朗讀";return}
+ const ss=speechSynthesis;ss.cancel();ss.resume?.();
+ const u=new SpeechSynthesisUtterance(t);u.lang=VOICE[l];
+ const v=ss.getVoices().find(x=>x.lang.replace("_","-")===VOICE[l])||ss.getVoices().find(x=>x.lang.startsWith(VOICE[l].slice(0,2)));
+ if(v)u.voice=v;u.volume=1;u.rate=1;
+ u.onerror=e=>{$("err").textContent="朗讀失敗："+e.error+"（請確認手機未靜音、音量已開）"};
+ setTimeout(()=>ss.speak(u),100)};
+speechSynthesis?.getVoices();
 $("spkOut").onclick=()=>say($("out").textContent,tgt());
 $("spkIn").onclick=()=>say($("in").value,src());
 $("gear").onclick=()=>{$("key").value=localStorage.apiKey||"";$("dlg").showModal()};

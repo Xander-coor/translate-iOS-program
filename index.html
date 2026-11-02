@@ -85,14 +85,18 @@ $("src").onchange=run;$("tgt").onchange=run;
 $("clr").onclick=()=>{$("in").value="";run()};
 $("cp").onclick=()=>navigator.clipboard.writeText($("out").textContent);
 $("swap").onclick=()=>{const o=$("out").textContent;if(o){const a=src(),b=tgt();$("src").value=b;$("tgt").value=a;$("in").value=o;run()}};
-const say=(t,l)=>{if(!t||!("speechSynthesis" in window)){$("err").textContent="此瀏覽器不支援朗讀";return}
- const ss=speechSynthesis;ss.cancel();ss.resume?.();
- const u=new SpeechSynthesisUtterance(t);u.lang=VOICE[l];
- const v=ss.getVoices().find(x=>x.lang.replace("_","-")===VOICE[l])||ss.getVoices().find(x=>x.lang.startsWith(VOICE[l].slice(0,2)));
- if(v)u.voice=v;u.volume=1;u.rate=1;
- u.onerror=e=>{$("err").textContent="朗讀失敗："+e.error+"（請確認手機未靜音、音量已開）"};
- setTimeout(()=>ss.speak(u),100)};
-speechSynthesis?.getVoices();
+const TTS={en:"en",zh:"zh-TW",ja:"ja"}, au=new Audio();au.preload="auto";
+function chunks(t){const o=[];let c="";for(const p of t.split(/(?<=[。！？!?.\n,，、;；])/)){if((c+p).length>150&&c){o.push(c.trim());c=""}c+=p;while(c.length>150){o.push(c.slice(0,150));c=c.slice(150)}}if(c.trim())o.push(c.trim());return o.filter(x=>x)}
+function fallback(t,l){const ss=window.speechSynthesis;if(!ss){$("err").textContent="朗讀失敗";return}
+ ss.cancel();const u=new SpeechSynthesisUtterance(t);u.lang=VOICE[l];
+ const v=ss.getVoices().find(x=>x.lang.replace("_","-")===VOICE[l]);if(v)u.voice=v;
+ setTimeout(()=>ss.speak(u),100);
+ $("err").textContent="已改用系統朗讀（靜音模式下可能沒聲音）"}
+function say(t,l){if(!t)return;window.speechSynthesis?.cancel();au.pause();
+ const q=chunks(t),url=c=>"https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl="+TTS[l]+"&q="+encodeURIComponent(c);
+ let i=0;$("err").textContent="";
+ const next=()=>{if(i<q.length){au.src=url(q[i++]);au.play().catch(()=>fallback(t,l))}};
+ au.onended=next;au.onerror=()=>fallback(t,l);next()}
 $("spkOut").onclick=()=>say($("out").textContent,tgt());
 $("spkIn").onclick=()=>say($("in").value,src());
 $("gear").onclick=()=>{$("key").value=localStorage.apiKey||"";$("dlg").showModal()};

@@ -16,7 +16,8 @@ padding:env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 16px)}
 header{display:flex;justify-content:space-between;align-items:center;padding:14px 0}
 h1{font-size:26px;margin:0}
 button{background:none;border:0;color:var(--sub);font-size:20px;padding:6px}
-select{width:100%;padding:8px;border-radius:8px;border:0;background:var(--card);color:var(--fg);font-size:16px;margin-bottom:12px}
+select{flex:1;padding:8px;border-radius:8px;border:0;background:var(--card);color:var(--fg);font-size:16px}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:12px;color:var(--sub)}
 .card{background:var(--card);border-radius:16px;padding:14px;margin-bottom:12px}
 .card.t{background:var(--tint)}
 textarea{width:100%;min-height:130px;border:0;outline:0;resize:none;background:none;color:var(--fg);font:inherit}
@@ -30,7 +31,8 @@ dialog input{width:100%;padding:10px;font-size:16px;margin:10px 0;border-radius:
 </head>
 <body>
 <header><h1>即時翻譯</h1><button id="gear">⚙︎</button></header>
-<select id="dir"><option value="auto">自動偵測</option><option value="en">英 → 中</option><option value="zh">中 → 英</option></select>
+<div class="row"><select id="src"><option value="auto">自動偵測</option><option value="en">English</option><option value="zh">繁體中文</option><option value="ja">日本語</option></select>
+<span>→</span><select id="tgt"><option value="auto">自動</option><option value="zh">繁體中文</option><option value="en">English</option><option value="ja">日本語</option></select></div>
 <div class="card"><textarea id="in" placeholder="輸入或貼上英文／中文⋯"></textarea>
 <div class="bar"><button id="spkIn">🔊</button><button id="clr">✕</button></div></div>
 <div class="card t"><div id="out"></div><div id="err"></div>
@@ -42,16 +44,19 @@ dialog input{width:100%;padding:10px;font-size:16px;margin:10px 0;border-radius:
 <script>
 const $=id=>document.getElementById(id), MARK="§§NOTES§§", MODEL="claude-sonnet-5-5";
 const isZh=s=>{const l=[...s].filter(c=>/\p{L}/u.test(c));return l.length&&l.filter(c=>/[㐀-鿿]/.test(c)).length/l.length>.2};
-const toZh=()=>$("dir").value==="en"||($("dir").value==="auto"&&!isZh($("in").value));
+const NAME={en:"English (US)",zh:"繁體中文（台灣）",ja:"日本語"}, VOICE={en:"en-US",zh:"zh-TW",ja:"ja-JP"};
+const detect=t=>/[\u3040-\u30ff]/.test(t)?"ja":isZh(t)?"zh":"en";
+const src=()=>$("src").value==="auto"?detect($("in").value):$("src").value;
+const tgt=()=>{const v=$("tgt").value;if(v!=="auto")return v;return src()==="zh"?"en":"zh"};
 let timer,ctrl;
-function sys(zh){const d=new Date().toLocaleDateString("zh-TW",{year:"numeric",month:"long",day:"numeric"});
-return `你是頂尖的英中雙向翻譯員，今天是 ${d}。目標語言：${zh?"繁體中文（台灣）":"English (US)"}。
+function sys(t){const d=new Date().toLocaleDateString("zh-TW",{year:"numeric",month:"long",day:"numeric"});
+return `你是頂尖的英中雙向翻譯員，今天是 ${d}。來源語言：${NAME[src()]}。目標語言：${NAME[t]}（中、英、日三種語言可互譯）。
 規則：
 1. 譯文要像母語人士日常真正會說、會寫的話：優先使用當下流行的口語、網路用語與慣用語（例如 Gen Z 俚語、台灣當代用語），不要逐字直譯或書面腔。
-2. 中文一律使用繁體中文（台灣用語）。英文使用自然的美式英文。
+2. 中文一律使用繁體中文（台灣用語）。英文使用自然的美式英文。日文使用自然的日常口語，包含當下年輕人用語與網路用語（若原文語氣正式，則用敬體）。
 3. 保留原文語氣、格式、換行與表情符號。單字、片語、長文皆可處理。
 4. 只輸出譯文本身，不要加引號、前言或解釋。
-5. 譯文結束後，若原文含有俚語、新詞、梗、慣用語或有趣詞源，另起一行輸出 ${MARK}，之後用繁體中文以條列簡述：詞意、詞源／流行背景、使用語氣、其他常見說法。單字輸入請加列詞性與 1–2 個例句。沒有值得說明的內容就完全省略此段。
+5. 譯文結束後，若原文含有俚語、新詞、梗、慣用語或有趣詞源，另起一行輸出 ${MARK}，之後用繁體中文以條列簡述：詞意、詞源／流行背景、使用語氣、其他常見說法。單字輸入請加列詞性與 1–2 個例句。若譯文是日文，請附上假名讀音。沒有值得說明的內容就完全省略此段。
 6. 不確定的新興用法請誠實標註「可能」，不要捏造詞源。`}
 function render(s,fin){let i=s.indexOf(MARK),o=s,n="";
  if(i>=0){o=s.slice(0,i);n=s.slice(i+MARK.length)}
@@ -61,12 +66,12 @@ async function run(){
  const text=$("in").value.trim();ctrl?.abort();
  if(!text){$("out").textContent="";$("nc").hidden=true;$("err").textContent="";$("ld").textContent="";return}
  const key=localStorage.apiKey;if(!key){$("dlg").showModal();return}
- const zh=toZh();ctrl=new AbortController();$("ld").textContent="⏳";$("err").textContent="";
+ const t=tgt();ctrl=new AbortController();$("ld").textContent="⏳";$("err").textContent="";
  try{
   const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",signal:ctrl.signal,
    headers:{"x-api-key":key,"anthropic-version":"2023-06-01","content-type":"application/json",
     "anthropic-dangerous-direct-browser-access":"true"},
-   body:JSON.stringify({model:MODEL,max_tokens:2048,stream:true,system:sys(zh),messages:[{role:"user",content:text}]})});
+   body:JSON.stringify({model:MODEL,max_tokens:2048,stream:true,system:sys(t),messages:[{role:"user",content:text}]})});
   if(!r.ok)throw new Error("API 錯誤 "+r.status+"："+(await r.text()).slice(0,150));
   const rd=r.body.getReader(),dec=new TextDecoder();let buf="",acc="";
   for(;;){const {done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});
@@ -76,13 +81,13 @@ async function run(){
   render(acc,true);$("ld").textContent="";
  }catch(e){if(e.name==="AbortError")return;$("err").textContent=e.message;$("ld").textContent=""}}
 $("in").addEventListener("input",()=>{clearTimeout(timer);timer=setTimeout(run,600)});
-$("dir").onchange=run;
+$("src").onchange=run;$("tgt").onchange=run;
 $("clr").onclick=()=>{$("in").value="";run()};
 $("cp").onclick=()=>navigator.clipboard.writeText($("out").textContent);
-$("swap").onclick=()=>{const o=$("out").textContent;if(o){$("dir").value="auto";$("in").value=o;run()}};
-const say=(t,zh)=>{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang=zh?"zh-TW":"en-US";speechSynthesis.speak(u)};
-$("spkOut").onclick=()=>say($("out").textContent,toZh());
-$("spkIn").onclick=()=>say($("in").value,!toZh());
+$("swap").onclick=()=>{const o=$("out").textContent;if(o){const a=src(),b=tgt();$("src").value=b;$("tgt").value=a;$("in").value=o;run()}};
+const say=(t,l)=>{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang=VOICE[l];speechSynthesis.speak(u)};
+$("spkOut").onclick=()=>say($("out").textContent,tgt());
+$("spkIn").onclick=()=>say($("in").value,src());
 $("gear").onclick=()=>{$("key").value=localStorage.apiKey||"";$("dlg").showModal()};
 $("save").onclick=()=>{localStorage.apiKey=$("key").value.trim();$("dlg").close()};
 if(!localStorage.apiKey)$("dlg").showModal();

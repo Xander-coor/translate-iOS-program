@@ -20,3 +20,10 @@ open Translate.xcodeproj
 ## 注意
 - 上架前請改走自己的後端代理，避免金鑰放在 App 內。
 - 「最新」程度取決於模型知識；若需即時網路新詞，可在後端加入 web search 工具。
+
+## 只有 iPhone（沒有 Mac）：用網頁版 PWA
+`web/index.html` 是功能相同的單檔網頁版。
+1. GitHub repo → Settings → Pages → Source 選 Deploy from a branch，選此分支（或合併後的 main）與 `/web` 資料夾（若只提供 `/(root)`，可把 `index.html` 複製到根目錄）。
+2. 用 iPhone Safari 開啟 `https://<帳號>.github.io/translate-ios-program/`。
+3. 分享 → 加入主畫面，之後就像 App 一樣開啟。
+4. 首次開啟輸入 Anthropic API Key（只存在手機瀏覽器）。

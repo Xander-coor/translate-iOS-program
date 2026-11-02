@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -32,17 +32,17 @@ dialog input{width:100%;padding:10px;font-size:16px;margin:10px 0;border-radius:
 </style>
 </head>
 <body>
-<header><h1>即時翻譯</h1><button id="gear">⚙︎</button></header>
-<div class="row"><select id="src"><option value="auto">自動偵測</option><option value="en">English</option><option value="zh">繁體中文</option><option value="ja">日本語</option></select>
-<span>→</span><select id="tgt"><option value="auto">自動</option><option value="zh">繁體中文</option><option value="en">English</option><option value="ja">日本語</option></select></div>
-<div class="card"><textarea id="in" placeholder="輸入或貼上英文／中文⋯"></textarea>
+<header><h1>A Trans</h1><button id="gear">⚙︎</button></header>
+<div class="row"><select id="src"><option value="auto">Detect language</option><option value="en">English</option><option value="zh">Chinese (Traditional)</option><option value="ja">Japanese</option></select>
+<span>→</span><select id="tgt"><option value="auto">Auto</option><option value="zh">Chinese (Traditional)</option><option value="en">English</option><option value="ja">Japanese</option></select></div>
+<div class="card"><textarea id="in" placeholder="Type or paste text…"></textarea>
 <div class="bar"><button id="spkIn">🔊</button><button id="clr">✕</button></div></div>
 <div class="card t"><div id="out"></div><div id="err"></div>
 <div class="bar"><button id="spkOut">🔊</button><button id="cp">⧉</button><button id="swap">⇅</button><span id="ld"></span></div></div>
-<div class="card" id="nc" hidden><b>📖 用語與詞源</b><div id="notes"></div></div>
+<div class="card" id="nc" hidden><b>📖 Usage &amp; Etymology</b><div id="notes"></div></div>
 <dialog id="dlg"><b>Anthropic API Key</b>
 <input id="key" type="password" placeholder="sk-ant-..." autocapitalize="off" autocomplete="off">
-<small>金鑰只存在這支手機的瀏覽器裡。</small><br><br><button id="save" style="color:var(--ac)">完成</button></dialog>
+<small>Your key is stored only in this phone's browser.</small><br><br><button id="save" style="color:var(--ac)">Done</button></dialog>
 <script>
 const $=id=>document.getElementById(id), MARK="§§NOTES§§", MODEL="claude-sonnet-5-5";
 const isZh=s=>{const l=[...s].filter(c=>/\p{L}/u.test(c));return l.length&&l.filter(c=>/[㐀-鿿]/.test(c)).length/l.length>.2};
@@ -74,7 +74,7 @@ async function run(){
    headers:{"x-api-key":key,"anthropic-version":"2023-06-01","content-type":"application/json",
     "anthropic-dangerous-direct-browser-access":"true"},
    body:JSON.stringify({model:MODEL,max_tokens:2048,stream:true,system:sys(t),messages:[{role:"user",content:text}]})});
-  if(!r.ok)throw new Error("API 錯誤 "+r.status+"："+(await r.text()).slice(0,150));
+  if(!r.ok)throw new Error("API error "+r.status+": "+(await r.text()).slice(0,150));
   const rd=r.body.getReader(),dec=new TextDecoder();let buf="",acc="";
   for(;;){const {done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});
    const lines=buf.split("\n");buf=lines.pop();
@@ -87,12 +87,12 @@ $("src").onchange=run;$("tgt").onchange=run;
 $("clr").onclick=()=>{$("in").value="";run()};
 $("cp").onclick=()=>navigator.clipboard.writeText($("out").textContent);
 $("swap").onclick=()=>{const o=$("out").textContent;if(o){const a=src(),b=tgt();$("src").value=b;$("tgt").value=a;$("in").value=o;run()}};
-const say=(t,l)=>{if(!t||!("speechSynthesis" in window)){$("err").textContent="此瀏覽器不支援朗讀";return}
+const say=(t,l)=>{if(!t||!("speechSynthesis" in window)){$("err").textContent="Speech is not supported in this browser";return}
  const ss=speechSynthesis;ss.cancel();ss.resume?.();
  const u=new SpeechSynthesisUtterance(t);u.lang=VOICE[l];
  const v=ss.getVoices().find(x=>x.lang.replace("_","-")===VOICE[l])||ss.getVoices().find(x=>x.lang.startsWith(VOICE[l].slice(0,2)));
  if(v)u.voice=v;u.volume=1;u.rate=1;
- u.onerror=e=>{$("err").textContent="朗讀失敗："+e.error+"（請確認手機未靜音、音量已開）"};
+ u.onerror=e=>{$("err").textContent="Speech failed: "+e.error+" (check that silent mode is off and volume is up)"};
  setTimeout(()=>ss.speak(u),100)};
 speechSynthesis?.getVoices();
 $("spkOut").onclick=()=>say($("out").textContent,tgt());
